@@ -1,0 +1,43 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # Adjust to your main branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x  # Replace with your Python version
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run Django development server
+        run: |
+          source venv/bin/activate
+          python manage.py runserver 0.0.0.0:8000 &
+
+      - name: Deploy to EC2
+        run: |
+          chmod 400 EC2.pem  # Ensure proper file permissions
+          ssh -o StrictHostKeyChecking=no -i EC.pem ec2-user@3.81.194.87
+          git pull origin main
+          source venv/bin/activate 
+          pip install -r requirements.txt 
+          python manage.py migrate 
+          python manage.py collectstatic 
+          gunicorn --bind 0.0.0.0:8000 WeatherDashboard.wsgi
+
+  # Add other steps for testing, linting, etc., as needed
